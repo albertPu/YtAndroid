@@ -6,7 +6,8 @@ import android.Manifest.permission.RECEIVE_SMS
 import android.Manifest.permission.READ_SMS
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
-
+import com.yt.pay.smsmsg.SMSReceiver
+import kotlinx.android.synthetic.main.activity_main.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -27,5 +28,8 @@ class MainActivity : AppCompatActivity() {
                 arrayOf(READ_SMS, RECEIVE_SMS),0
             )
         }//动态
+        btn_msg.setOnClickListener {
+            SMSReceiver.sendMsg(ed_msg.text.toString())
+        }
     }
 }

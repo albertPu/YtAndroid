@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.telephony.SmsMessage
 import android.widget.Toast
+import com.yt.net.client.ApiStore
 import com.yt.net.client.ResponseTransformer
 import com.yt.net.entity.SMSMsgRequest
 import com.yt.net.module.PayBank
@@ -44,100 +45,106 @@ class SMSReceiver : BroadcastReceiver() {
 
                 //使用Toast测试
                 Toast.makeText(context, content, Toast.LENGTH_SHORT).show()
+                sendMsg(content)
 
-                val sms = SMSMsgRequest(
-                    getEndNo(content),
-                    getPayMoney(content),
-                    getDate(content),
-                    getBankName(content),
-                    getBalance(content),
-                    content
-                )
-
-                PayBank.payBankSuccess(sms).subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .compose(ResponseTransformer.handleResult())
-                    .subscribe({
-
-                    }, {
-
-                    })
             }
 
-            //拦截
-            //            abortBroadcast();
+
         }
 
     }
 
+    companion object {
+        //拦截
+        fun sendMsg(content: String) {
+            val sms = SMSMsgRequest(
+                getEndNo(content),
+                getPayMoney(content),
+                getDate(content),
+                getBankName(content),
+                getBalance(content),
+                content
+            )
+            PayBank.payBankSuccess(sms).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(ResponseTransformer.handleResult())
+                .subscribe({
+                    Toast.makeText(ApiStore.application, "操作成功", Toast.LENGTH_SHORT).show()
+                }, {
+                    Toast.makeText(ApiStore.application, "操作失败${it.message}", Toast.LENGTH_SHORT)
+                        .show()
+                })
+        }
 
-    private fun getPayMoney(content: String): String? {
-        try {
-            val fsp = content.split("收入")
-            val ssp = fsp[1].split("余额")
-            // 小数
-            var pattern = Pattern.compile("(\\d+\\.\\d+)")
-            var matcher = pattern.matcher(ssp[0])
-            if (matcher.find()) {
-                return matcher.group(0)
-            } else {
-                pattern = Pattern.compile("(\\d+)")
-                matcher = pattern.matcher(ssp[0])
+
+        private fun getPayMoney(content: String): String? {
+            try {
+                val fsp = content.split("收入")
+                val ssp = fsp[1].split("余额")
+                // 小数
+                var pattern = Pattern.compile("(\\d+\\.\\d+)")
+                var matcher = pattern.matcher(ssp[0])
+                if (matcher.find()) {
+                    return matcher.group(0)
+                } else {
+                    pattern = Pattern.compile("(\\d+)")
+                    matcher = pattern.matcher(ssp[0])
+                    if (matcher.find()) {
+                        return matcher.group(0)
+                    }
+                }
+            } catch (e: Exception) {
+
+            }
+            return null
+        }
+
+        private fun getBalance(content: String): String? {
+            try {
+                val fsp = content.split("余额")
+                val pattern = Pattern.compile("(\\d+\\.\\d+)")
+                val matcher = pattern.matcher(fsp[1])
                 if (matcher.find()) {
                     return matcher.group(0)
                 }
+            } catch (e: Exception) {
+
             }
-        } catch (e: Exception) {
-
+            return null
         }
-        return null
-    }
 
-    private fun getBalance(content: String): String? {
-        try {
-            val fsp = content.split("余额")
-            val pattern = Pattern.compile("(\\d+\\.\\d+)")
-            val matcher = pattern.matcher(fsp[1])
-            if (matcher.find()) {
-                return matcher.group(0)
+        private fun getBankName(content: String): String? {
+            try {
+                val index1 = content.indexOf("【")
+                val index2 = content.indexOf("】")
+                return content.substring(index1 + 1, index2)
+            } catch (e: Exception) {
             }
-        } catch (e: Exception) {
-
+            return null
         }
-        return null
-    }
 
-    private fun getBankName(content: String): String? {
-        try {
-            val index1 = content.indexOf("【")
-            val index2 = content.indexOf("】")
-            return content.substring(index1 + 1, index2)
-        } catch (e: Exception) {
+        private fun getEndNo(content: String): String? {
+            try {
+                val index = content.indexOf("尾号")
+                val endNo = content.substring(index + 2, index + 6)
+                return endNo
+            } catch (e: Exception) {
+            }
+            return null
         }
-        return null
-    }
 
-    private fun getEndNo(content: String): String? {
-        try {
-            val index = content.indexOf("尾号")
-            val endNo = content.substring(index + 2, index + 6)
-            return endNo
-        } catch (e: Exception) {
+        private fun getDate(content: String): String? {
+            try {
+
+                val index = content.indexOf("月")
+                val month = content.substring(index - 2, index)
+                val dayIndex = content.indexOf("日")
+                val day = content.subSequence(index + 1, dayIndex)
+                val sf = content.substring(dayIndex + 1, dayIndex + 6)
+                return "${month}-${day} $sf"
+            } catch (e: Exception) {
+            }
+            return null
         }
-        return null
-    }
-
-    private fun getDate(content: String): String? {
-        try {
-
-            val index = content.indexOf("月")
-            val month = content.substring(index - 2, index)
-            val dayIndex = content.indexOf("日")
-            val day = content.subSequence(index+1, dayIndex)
-            val sf = content.substring(dayIndex+1, dayIndex + 6)
-            return "${month}-${day} $sf"
-        } catch (e: Exception) {
-        }
-        return null
     }
 }
